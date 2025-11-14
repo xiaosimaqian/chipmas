@@ -1,0 +1,111 @@
+# ChipMASRAG 默认配置文件
+
+# 数据集路径
+data:
+  ispd2015: "data/ispd2015"
+  titan23: "data/titan23/benchmarks/titan23"
+  knowledge_base: "data/knowledge_base"
+  results: "data/results"
+
+# 知识库配置
+knowledge_base:
+  case_file: "data/knowledge_base/kb_cases.json"
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"  # 嵌入模型
+    # 选项：
+    # - "sentence-transformers/all-MiniLM-L6-v2" (HuggingFace在线，需要网络)
+    # - "/path/to/local/model" (本地sentence-transformers模型)
+    # - "ollama:nomic-embed-text" (使用Ollama，需要先运行: ollama pull nomic-embed-text)
+  embedding_model_type: "auto"  # 模型类型: "sentence-transformers", "ollama", "auto" (自动检测)
+  ollama_base_url: "http://localhost:11434"  # Ollama服务地址
+  max_cases: 1000
+  similarity_threshold: 0.7
+
+# RAG检索配置
+rag:
+  coarse_top_k: 50      # 粗粒度检索返回top-k
+  fine_top_k: 20         # 细粒度检索返回top-k
+  semantic_top_k: 10     # 语义检索返回top-k（最终结果）
+  feature_dim: 128       # 特征向量维度
+  embedding_dim: 384     # 嵌入向量维度（all-MiniLM-L6-v2输出384维）
+
+# 分区配置
+partition:
+  num_partitions: 4       # 默认分区数
+  balance_epsilon: 0.05  # 平衡约束（5%）
+  min_partition_size: 100 # 最小分区大小
+  max_partition_size: 10000 # 最大分区大小
+
+# 多智能体配置
+agents:
+  num_partition_agents: 4  # 分区智能体数量（等于分区数）
+  coordinator_hidden_dim: 256
+  partition_agent_hidden_dim: 256
+  gat_hidden_dim: 128
+  gat_num_layers: 3
+  gat_num_heads: 4
+
+# 协商配置
+negotiation:
+  max_iterations: 10      # 最大协商迭代次数
+  convergence_threshold: 0.01  # 收敛阈值
+  boundary_cost_threshold: 0.5  # 边界代价阈值（触发协商）
+  migration_probability: 0.3    # 模块迁移概率
+
+# 训练配置
+training:
+  algorithm: "maddpg"     # 分区智能体：MADDPG
+  coordinator_algorithm: "ppo"  # 协调者：PPO
+  batch_size: 64
+  learning_rate: 0.001
+  gamma: 0.99             # 折扣因子
+  tau: 0.01               # 软更新系数
+  update_frequency: 100   # 更新频率
+  max_episodes: 1000
+  save_frequency: 100     # 保存检查点频率
+
+# OpenRoad配置
+openroad:
+  binary_path: "openroad"  # OpenRoad可执行文件路径
+  timeout: null            # 超时时间（秒）。null表示不设置超时，等待OpenROAD自然完成（大设计可能需要数小时）
+                            # 如果需要设置超时，建议设置为86400（24小时）或更长
+  use_api: true            # 使用API而非TCL命令
+  api_method: "python"     # API调用方式：python/cpp
+  threads: "max"           # OpenROAD线程数。可以设置为数字（如4、8）或"max"（使用所有可用CPU核心）
+                            # 注意：OpenROAD对内存要求高，建议不要同时运行多个OpenROAD进程
+                            # 但同一个OpenROAD可以使用多线程加速（-threads参数）
+
+# 实验配置
+experiment:
+  benchmark: "ispd2015"   # 基准测试：ispd2015/titan23
+  designs: []              # 空列表表示使用所有设计
+  num_runs: 1              # 每个设计运行次数
+  random_seed: 42
+  output_dir: "data/results"
+  log_level: "INFO"        # DEBUG/INFO/WARNING/ERROR
+
+# 评估指标配置
+evaluation:
+  metrics:
+    - "hpwl"               # 半周线长
+    - "boundary_cost"      # 边界代价
+    - "partition_balance"  # 分区平衡度
+    - "negotiation_success_rate"  # 协商成功率
+    - "runtime"            # 运行时间
+    - "kb_hit_rate"       # 知识库命中率
+
+# 可视化配置
+visualization:
+  enabled: true
+  output_format: "png"     # png/pdf/svg
+  dpi: 300
+  show_partitions: true
+  show_boundary_cost: true
+  show_negotiation_history: true
+
+# 资源监控配置
+monitoring:
+  enabled: true
+  track_memory: true
+  track_time: true
+  log_interval: 10         # 日志记录间隔（秒）
+

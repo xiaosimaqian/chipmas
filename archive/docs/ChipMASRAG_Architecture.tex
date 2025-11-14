@@ -1,0 +1,158 @@
+\begin{figure*}[htbp]
+    \centering
+    \resizebox{0.98\textwidth}{!}{%
+    \begin{tikzpicture}[
+        % 定义样式
+        coordinator/.style={rectangle, rounded corners=5pt, minimum width=3.5cm, minimum height=1.3cm, 
+                            text centered, draw=black, fill=blue!25, thick, font=\small},
+        agent/.style={rectangle, rounded corners=5pt, minimum width=2.6cm, minimum height=1.9cm, 
+                      text centered, draw=black, fill=green!25, thick, font=\scriptsize, align=center},
+        execution/.style={rectangle, rounded corners=5pt, minimum width=2.2cm, minimum height=1cm, 
+                          text centered, draw=black, fill=orange!25, thick, font=\small},
+        knowledge/.style={cylinder, shape border rotate=90, aspect=0.2, minimum width=2cm, 
+                          minimum height=1.6cm, draw=black, fill=yellow!25, thick, font=\tiny, align=center},
+        rag/.style={rectangle, rounded corners=3pt, minimum width=1.8cm, minimum height=0.7cm, 
+                    text centered, draw=black, fill=purple!20, font=\tiny},
+        arrow/.style={thick, ->, >=stealth},
+        label/.style={font=\tiny, fill=white, text opacity=0.9, inner sep=1pt}
+    ]
+    
+    % ========== 第一层：协调者层 ==========
+    % 输入
+    \node[font=\small] (input) at (0, 9.5) {\textbf{设计输入 $D$}};
+    
+    % 协调者智能体
+    \node[coordinator] (coordinator) at (0, 8.2) {\textbf{协调者智能体 $\mathcal{A}_0$}};
+    
+    % RAG检索模块 - 水平排列，增加间距
+    \node[rag] (rag_coarse) at (-4.2, 7) {粗粒度\\检索};
+    \node[rag] (rag_fine) at (-1.4, 7) {细粒度\\检索};
+    \node[rag] (rag_semantic) at (1.4, 7) {语义\\检索};
+    \node[rag] (rag_rank) at (4.2, 7) {排序\\Top-K};
+    
+    % 全局协调模块
+    \node[rag, minimum width=3cm, minimum height=0.9cm, fill=blue!30] (global_coord) at (0, 5.8) {\textbf{全局协调模块}};
+    
+    % 知识库 - 放在右侧，提高位置
+    \node[knowledge] (kb) at (6.2, 7.2) {知识库$\mathcal{K}$};
+    
+    % ========== 第二层：分区智能体层 ==========
+    % 分区智能体 - 增加间距
+    \node[agent] (agent1) at (-4.5, 3.8) {
+        \textbf{分区智能体}\\
+        \textbf{$\mathcal{A}_1$}\\
+        \rule{2.2cm}{0.4pt}\\
+        GAT编码\\
+        Actor-Critic\\
+        协商网络
+    };
+    
+    \node[agent] (agent2) at (-1.5, 3.8) {
+        \textbf{分区智能体}\\
+        \textbf{$\mathcal{A}_2$}\\
+        \rule{2.2cm}{0.4pt}\\
+        GAT编码\\
+        Actor-Critic\\
+        协商网络
+    };
+    
+    \node[agent] (agent3) at (1.5, 3.8) {
+        \textbf{分区智能体}\\
+        \textbf{$\mathcal{A}_3$}\\
+        \rule{2.2cm}{0.4pt}\\
+        GAT编码\\
+        Actor-Critic\\
+        协商网络
+    };
+    
+    \node[agent] (agent4) at (4.5, 3.8) {
+        \textbf{分区智能体}\\
+        \textbf{$\mathcal{A}_4$}\\
+        \rule{2.2cm}{0.4pt}\\
+        GAT编码\\
+        Actor-Critic\\
+        协商网络
+    };
+    
+    % ========== 第三层：执行层 ==========
+    \node[execution] (layout_gen) at (-3, 1.8) {布局生成};
+    \node[execution] (evaluate) at (0, 1.8) {质量评估};
+    \node[execution] (feedback) at (3, 1.8) {知识库\\更新};
+    
+    % 输出
+    \node[font=\small] (output) at (3, 0.4) {\textbf{布局解 $Y^*$}};
+    
+    % ========== 连接线：输入到协调者 ==========
+    \draw[arrow] (input) -- (coordinator);
+    
+    % ========== 连接线：协调者到RAG检索流程 ==========
+    % 从协调者底部边缘出发，避免穿过文字
+    \draw[arrow] (coordinator.south west) to[out=-90, in=135] ([xshift=-0.2cm]rag_coarse.north west);
+    \draw[arrow] (rag_coarse.east) -- (rag_fine.west);
+    \draw[arrow] (rag_fine.east) -- (rag_semantic.west);
+    \draw[arrow] (rag_semantic.east) -- (rag_rank.west);
+    % 从排序Top-K底部边缘出发，避免穿过全局协调模块文字
+    \draw[arrow] (rag_rank.south east) to[out=-90, in=45] ([xshift=0.2cm]global_coord.north east);
+    
+    % ========== 连接线：知识库与RAG检索（使用更长的弯曲路径，避免覆盖文字） ==========
+    % 从知识库左侧边缘出发，避免穿过知识库文字
+    \draw[arrow] (kb.west) to[out=180, in=30] ([xshift=-0.4cm, yshift=0.1cm]rag_coarse.east);
+    \node[above of=rag_coarse, yshift=-0.4cm, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt] (retrieve_label) {检索};
+    % 从排序Top-K右侧边缘出发，避免穿过文字
+    \draw[arrow] (rag_rank.east) to[out=0, in=150] ([xshift=0.4cm, yshift=-0.1cm]kb.west);
+    \node[above of=rag_rank, yshift=-0.4cm, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt] (update_label) {更新};
+    
+    % ========== 连接线：全局协调模块到分区智能体（使用更长的弯曲路径） ==========
+    \draw[arrow, dashed, blue, line width=1.3pt] (global_coord.south west) to[out=-150, in=90] ([xshift=0.2cm]agent1.north) node[midway, left, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, xshift=-0.3cm] {RAG结果};
+    \draw[arrow, dashed, blue, line width=1.3pt] (global_coord.south) to[out=-90, in=90] (agent2.north);
+    \draw[arrow, dashed, blue, line width=1.3pt] (global_coord.south) to[out=-90, in=90] (agent3.north);
+    \draw[arrow, dashed, blue, line width=1.3pt] (global_coord.south east) to[out=-30, in=90] ([xshift=-0.2cm]agent4.north) node[midway, right, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, xshift=0.3cm] {RAG结果};
+    
+    % ========== 连接线：智能体间协商（标签放在连接线正上方中间） ==========
+    \draw[arrow, <->, red, line width=1.1pt] (agent1.east) -- (agent2.west) node[midway, above, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, yshift=0.15cm] {边界协商};
+    \draw[arrow, <->, red, line width=1.1pt] (agent2.east) -- (agent3.west) node[midway, above, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, yshift=0.15cm] {边界协商};
+    \draw[arrow, <->, red, line width=1.1pt] (agent3.east) -- (agent4.west) node[midway, above, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, yshift=0.15cm] {边界协商};
+    
+    % ========== 连接线：智能体到执行层（使用弯曲路径避免重叠和覆盖文字） ==========
+    % 从智能体底部边缘出发，避免穿过内部文字
+    \draw[arrow] (agent1.south west) to[out=-90, in=135] ([xshift=-0.3cm]layout_gen.north west);
+    \draw[arrow] (agent2.south) to[out=-90, in=90] ([xshift=-0.1cm]layout_gen.north);
+    \draw[arrow] (agent3.south) to[out=-90, in=90] ([xshift=0.1cm]layout_gen.north);
+    \draw[arrow] (agent4.south east) to[out=-90, in=45] ([xshift=0.3cm]layout_gen.north east);
+    % 执行层内部连接，使用边缘锚点避免覆盖文字
+    \draw[arrow] (layout_gen.east) -- (evaluate.west);
+    \draw[arrow] (evaluate.east) -- (feedback.west);
+    % 从知识库更新顶部边缘出发，避免穿过文字
+    \draw[arrow] (feedback.north east) to[out=45, in=-135] ([xshift=0.3cm, yshift=-0.2cm]kb.south);
+    
+    % ========== 连接线：执行层反馈到智能体（标签放在反馈箭头中间位置，靠近连接线） ==========
+    % 反馈到A1：从质量评估左侧出发，向左上方弯曲，然后直接指向A1的底部
+    \draw[arrow, dashed, green!70!black, line width=1.3pt] (evaluate.west) to[out=180, in=0] ([xshift=-1.8cm, yshift=1.2cm]evaluate.center) to[out=180, in=-135] (agent1.south west) node[pos=0.5, above, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, yshift=0.1cm] {质量反馈};
+    % 反馈到A4：从质量评估右侧出发，向右上方弯曲，然后直接指向A4的底部
+    \draw[arrow, dashed, green!70!black, line width=1.3pt] (evaluate.east) to[out=0, in=180] ([xshift=1.8cm, yshift=1.2cm]evaluate.center) to[out=0, in=-45] (agent4.south east) node[pos=0.5, above, font=\tiny, fill=white, text opacity=0.95, inner sep=2pt, rounded corners=2pt, yshift=0.1cm] {质量反馈};
+    
+    % ========== 连接线：输出（使用边缘锚点避免覆盖文字） ==========
+    \draw[arrow] (evaluate.south east) to[out=-90, in=90] ([xshift=0.1cm]output.north);
+    
+    % ========== 标注层（放在最左侧边缘，确保不覆盖任何图案） ==========
+    \node[font=\bfseries\small, anchor=east] (layer1) at (-6.5, 8.2) {协调者层};
+    \node[font=\bfseries\small, anchor=east] (layer2) at (-6.5, 3.8) {分区智能体层};
+    \node[font=\bfseries\small, anchor=east] (layer3) at (-6.5, 1.8) {执行层};
+    
+    % ========== 图例（调整位置） ==========
+    \node[draw, rectangle, fill=white, minimum width=2.8cm, minimum height=1.8cm, 
+          anchor=north east, font=\tiny, align=left, text width=2.6cm] (legend) at (7, 0.6) {
+        \textbf{图例：}\\
+        \textcolor{blue}{--- RAG检索流}\\
+        \textcolor{red}{--- 边界协商}\\
+        \textcolor{green!70!black}{--- 质量反馈}\\
+        \textcolor{black}{--- 数据流}
+    };
+    
+    \end{tikzpicture}%
+    }%
+    \caption{ChipMASRAG系统架构图。架构包含三层：(1)协调者层 - RAG统一检索（粗粒度→细粒度→语义检索→排序Top-K）、全局协调、知识库管理；(2)分区智能体层 - 4个分区智能体，每个包含GAT状态编码、Actor-Critic策略网络、协商网络，智能体间通过知识驱动的边界协商协议协作；(3)执行层 - 布局生成、质量评估、知识库更新。蓝色虚线表示RAG检索结果从协调者广播到所有智能体，红色双向箭头表示智能体间的边界协商，绿色虚线表示质量反馈从执行层返回到智能体。}
+    \label{fig:architecture}
+    \end{figure*}
+    
+    
