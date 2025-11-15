@@ -28,6 +28,34 @@ from src.utils.die_size_config import get_die_size
 from src.utils.def_parser import DEFParser
 
 
+def detect_metal_layer_direction(tech_lef_path: Path) -> tuple:
+    """
+    检测LEF文件中metal1和metal2的方向
+    
+    Returns:
+        (hor_layer, ver_layer): 用于place_pins的水平和垂直层
+    """
+    with open(tech_lef_path, 'r') as f:
+        content = f.read()
+    
+    # 查找metal1和metal2的DIRECTION
+    metal1_match = re.search(r'LAYER metal1.*?DIRECTION\s+(\w+)', content, re.DOTALL)
+    metal2_match = re.search(r'LAYER metal2.*?DIRECTION\s+(\w+)', content, re.DOTALL)
+    
+    if metal1_match and metal2_match:
+        metal1_dir = metal1_match.group(1).upper()
+        metal2_dir = metal2_match.group(1).upper()
+        
+        # 根据实际方向返回
+        if metal1_dir == 'HORIZONTAL':
+            return ('metal1', 'metal2')  # metal1水平，metal2垂直
+        elif metal2_dir == 'HORIZONTAL':
+            return ('metal2', 'metal1')  # metal2水平，metal1垂直
+    
+    # 默认：假设metal1水平
+    return ('metal1', 'metal2')
+
+
 def generate_tcl_script(design_name: str,
                        design_dir: Path,
                        output_dir: Path,
@@ -52,6 +80,9 @@ def generate_tcl_script(design_name: str,
         else:
             module_name = design_name.split('_')[1]  # fallback: mgc_fft_1 -> fft
     
+    # 自动检测metal层方向
+    hor_layer, ver_layer = detect_metal_layer_direction(tech_lef)
+    
     tcl_content = f"""# OpenROAD TCL脚本 - {design_name}
 # Clean Baseline（无分区约束）
 
@@ -73,8 +104,9 @@ initialize_floorplan -die_area "{die_area}" -core_area "{core_area}" -site core
 # 5. 生成轨道
 make_tracks
 
-# 6. 放置端口
-place_pins -random
+# 6. 放置端口（自动检测metal层方向：hor={hor_layer}, ver={ver_layer}）
+# 注意：必须在global_placement之前完成所有端口放置
+place_pins -random -hor_layers {hor_layer} -ver_layers {ver_layer}
 
 # 7. 全局布局
 puts "开始全局布局..."
@@ -116,16 +148,18 @@ def extract_hpwl_from_log(log_content: str) -> dict:
     """从OpenROAD日志中提取HPWL"""
     hpwl_data = {}
     
-    # 查找global placement HPWL
-    gp_match = re.search(r'HPWL:\s+([\d.]+)\s+um', log_content)
+    # 查找 "original HPWL" (global placement后的HPWL)
+    # 格式: "original HPWL         2550024.0 u"
+    gp_match = re.search(r'original HPWL\s+([\d.]+)\s+u\b', log_content)
     if gp_match:
         hpwl_data['global_placement_hpwl'] = float(gp_match.group(1))
     
-    # 查找所有HPWL值，最后一个通常是legalized HPWL
-    all_hpwl = re.findall(r'HPWL:\s+([\d.]+)\s+um', log_content)
-    if all_hpwl:
-        hpwl_data['legalized_hpwl'] = float(all_hpwl[-1])
-        hpwl_data['hpwl'] = float(all_hpwl[-1])
+    # 查找 "legalized HPWL" (详细布局后的HPWL)
+    # 格式: "legalized HPWL        2630765.5 u"
+    leg_match = re.search(r'legalized HPWL\s+([\d.]+)\s+u\b', log_content)
+    if leg_match:
+        hpwl_data['legalized_hpwl'] = float(leg_match.group(1))
+        hpwl_data['hpwl'] = float(leg_match.group(1))
     
     return hpwl_data
 
@@ -283,7 +317,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="收集ISPD 2015 Clean Baseline")
-    parser.add_argument('--design', help='指定设计名称（可选，不指定则运行所有）')
+    parser.add_argument('--design', action='append', help='指定设计名称（可多次使用，不指定则运行所有）')
     parser.add_argument('--output-dir', default='results/clean_baseline',
                        help='输出目录（默认: results/clean_baseline）')
     parser.add_argument('--skip-existing', action='store_true',
@@ -305,7 +339,7 @@ def main():
     
     # 获取要运行的设计列表
     if args.design:
-        designs = [args.design]
+        designs = args.design  # args.design is now a list due to action='append'
     else:
         designs = sorted([d.name for d in ispd_dir.iterdir() 
                          if d.is_dir() and not d.name.startswith('.')])

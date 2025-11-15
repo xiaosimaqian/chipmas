@@ -56,7 +56,7 @@ def convert_ispd2015_to_hgr(def_file, output_hgr, output_mapping=None):
         # 提取 net 连接的 components
         connected_vertices = []
         for conn in net_info.get('connections', []):
-            comp = conn.get('comp')
+            comp = conn.get('component')  # 修复：使用'component'而不是'comp'
             if comp and comp in vertex_to_id:
                 connected_vertices.append(vertex_to_id[comp])
         

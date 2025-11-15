@@ -331,13 +331,41 @@ def visualize_physical_mapping(
     
     fig, ax = plt.subplots(figsize=(10, 10))
     
+    # 找出所有坐标的范围（用于缩放）
+    all_x = [coord for region in physical_regions.values() for coord in [region[0], region[2]]]
+    all_y = [coord for region in physical_regions.values() for coord in [region[1], region[3]]]
+    
+    min_x, max_x = min(all_x), max(all_x)
+    min_y, max_y = min(all_y), max(all_y)
+    
+    # 缩放因子（将坐标归一化到合理范围）
+    scale = 1000.0  # 缩放到1000单位以内
+    if max_x > 0:
+        x_scale = scale / max_x
+    else:
+        x_scale = 1.0
+    
+    if max_y > 0:
+        y_scale = scale / max_y
+    else:
+        y_scale = 1.0
+    
+    # 使用相同的缩放比例保持比例
+    scale_factor = min(x_scale, y_scale)
+    
     # 绘制各分区
     for pid, (llx, lly, urx, ury) in physical_regions.items():
-        width = urx - llx
-        height = ury - lly
+        # 应用缩放
+        llx_scaled = llx * scale_factor
+        lly_scaled = lly * scale_factor
+        urx_scaled = urx * scale_factor
+        ury_scaled = ury * scale_factor
+        
+        width = urx_scaled - llx_scaled
+        height = ury_scaled - lly_scaled
         
         rect = patches.Rectangle(
-            (llx, lly), width, height,
+            (llx_scaled, lly_scaled), width, height,
             linewidth=2,
             edgecolor='black',
             facecolor='lightblue',
@@ -346,19 +374,20 @@ def visualize_physical_mapping(
         ax.add_patch(rect)
         
         # 标注分区ID
-        cx = (llx + urx) / 2
-        cy = (lly + ury) / 2
+        cx = (llx_scaled + urx_scaled) / 2
+        cy = (lly_scaled + ury_scaled) / 2
         ax.text(cx, cy, f'P{pid}', ha='center', va='center', fontsize=14, weight='bold')
     
     # 绘制连接（可选）
     # TODO: 绘制分区间的连接线
     
     ax.set_aspect('equal')
-    ax.set_xlim(auto=True)
-    ax.set_ylim(auto=True)
+    ax.set_xlim(min_x * scale_factor - 50, max_x * scale_factor + 50)
+    ax.set_ylim(min_y * scale_factor - 50, max_y * scale_factor + 50)
     ax.set_title('Physical Partition Mapping', fontsize=16)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
+    ax.set_xlabel(f'X (scaled, original: {min_x} - {max_x})')
+    ax.set_ylabel(f'Y (scaled, original: {min_y} - {max_y})')
+    ax.grid(True, alpha=0.3)
     
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()

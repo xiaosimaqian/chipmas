@@ -210,7 +210,18 @@ chipmas/
 pip install -r requirements.txt
 ```
 
-### 2. 配置数据集
+### 2. 前置工具要求
+
+**必需工具**：
+- ✅ **OpenROAD**：用于物理布局
+  - 安装：参考 [OpenROAD官方文档](https://github.com/The-OpenROAD-Project/OpenROAD)
+  - 验证：`openroad -version`
+  
+- ✅ **Yosys**：用于Formal验证
+  - 安装：`brew install yosys` (macOS) 或参考官方文档
+  - 验证：`yosys -V`
+
+### 3. 配置数据集
 
 确保数据集位于正确位置。详细路径请参考"设计数据路径总览"章节。
 
@@ -229,13 +240,47 @@ pip install -r requirements.txt
   - `chiprag/data/real_datasets/openroad_flow/source/flow/designs/*/ibex/`（Ibex处理器）
   - `chiprag/data/real_datasets/openroad_flow/source/flow/designs/*/cva6/`（CVA6处理器）
 
-### 3. 构建知识库（首次运行）
+### 4. 验证安装（阶段1测试）
+
+**测试层级化改造、Formal验证、物理位置优化、OpenROAD布局、Macro LEF生成的完整流程**：
+
+```bash
+# 运行阶段1端到端集成测试（真实OpenROAD）
+cd /path/to/chipmas
+python3 tests/integration/test_stage1_end_to_end.py
+```
+
+**测试特点**：
+- ✅ **真实OpenROAD运行**：无任何模拟，所有文件均为真实生成
+- ✅ **完整流程验证**：层级化 → Formal验证 → 物理优化 → OpenROAD布局 → LEF生成
+- ⏱️ **运行时间**：约2-5分钟
+- 📋 **详细输出**：显示所有中间文件内容和验证结果
+
+**成功输出示例**：
+```
+================================================================================
+测试总结
+================================================================================
+层级化改造: ✓ 通过
+Formal验证: ✓ 等价性验证通过
+物理位置优化: ✓ 通过
+OpenROAD布局: ✓ 真实运行成功
+Macro LEF生成: ✓ 从真实DEF生成
+
+================================================================================
+✓ 阶段1端到端集成测试完成！
+================================================================================
+```
+
+**详细文档**：`tests/integration/README_STAGE1_TEST.md`
+
+### 5. 构建知识库（首次运行）
 
 ```bash
 python scripts/build_kb.py --config configs/default.yaml
 ```
 
-### 4. 运行实验
+### 6. 运行实验
 
 ```bash
 # 运行单个设计
@@ -1326,6 +1371,207 @@ at line 3658, on token +.
 
 ## 知识库管理
 
+### 知识库位置和备份
+
+#### 知识库文件位置
+
+**服务器知识库**：
+- **主文件**: `~/chipmas/data/knowledge_base/kb_cases.json`
+- **完整路径**: `/home/keqin/chipmas/data/knowledge_base/kb_cases.json`
+- **备份目录**: `~/chipmas/data/knowledge_base/backups/`
+
+**本地知识库**（如有）：
+- **主文件**: `chipmas/data/knowledge_base/kb_cases.json`
+- **备份目录**: `chipmas/data/knowledge_base/backups/`
+
+#### 知识库当前状态（最后更新：2025-11-15）
+
+| 指标 | 数值 |
+|------|------|
+| 总案例数 | 28 |
+| OpenROAD案例 | 16 (ISPD 2015) |
+| DreamPlace案例 | 12 (ISPD 2005: adaptec/bigblue) |
+| 文件大小 | ~288 KB |
+| EXP-002集成 | ✅ 已完成 |
+
+**案例分布**：
+- **OpenROAD案例（16个）** - ISPD 2015完整数据：
+  - 包含Legalized HPWL、Global Placement HPWL、运行时间、die size
+  - mgc_pci_bridge32_a/b, mgc_fft_*, mgc_des_perf_*, mgc_edit_dist_a
+  - mgc_matrix_mult_*, mgc_superblue16_a/11_a/12
+- **DreamPlace案例（12个）** - ISPD 2005：
+  - adaptec1/2/3/4, bigblue1/2/3/4, 等
+
+#### 备份策略
+
+**自动备份**：
+- 每次更新前自动创建时间戳备份
+- 命名格式: `kb_cases_backup_YYYYMMDD_HHMMSS.json`
+- 保存在同目录下
+
+**手动备份命令**：
+```bash
+# 创建备份
+cd ~/chipmas/data/knowledge_base
+cp kb_cases.json backups/kb_cases_$(date +%Y%m%d_%H%M%S).json
+
+# 查看所有备份
+ls -lh backups/
+
+# 恢复备份
+cp backups/kb_cases_backup_20251115_082233.json kb_cases.json
+```
+
+**⚠️ 重要提醒**：
+- ✅ 每次更新知识库前**必须**先创建备份
+- ✅ 验证新数据格式正确
+- ✅ 检查是否有重复案例
+- ✅ 保留原有数据（DreamPlace等其他来源）
+- ❌ 不要直接手动编辑JSON文件（使用脚本）
+
+#### 知识库更新历史
+
+**2025-11-15 08:22** - EXP-002 OpenROAD数据集成：
+- 添加16个ISPD 2015设计的OpenROAD完整数据
+- 更新15个案例，新增1个案例 (mgc_matrix_mult_b)
+- 备份文件: `kb_cases_backup_20251115_082233.json`
+- 脚本: `scripts/update_kb_with_clean_baseline.py`
+- 新增字段: `legalized_hpwl`, `global_placement_hpwl`, `openroad_source`, `die_size`, `core_area`
+
+**2025-11-12~13** - 初始知识库构建：
+- 从DreamPlace结果构建初始知识库（27个案例）
+- 脚本: `scripts/build_kb.py`
+
+#### 知识库快速参考指南
+
+##### 📁 知识库文件位置
+
+| 项目 | 路径 | 说明 |
+|------|------|------|
+| **主文件** | `~/chipmas/data/knowledge_base/kb_cases.json` | 服务器知识库主文件 |
+| **备份目录** | `~/chipmas/data/knowledge_base/backups/` | 自动备份存储位置 |
+| **最新备份** | `kb_cases_backup_20251115_082233.json` | 2025-11-15更新时的备份 |
+| **本地副本** | `chipmas/data/knowledge_base/kb_cases.json` | 本地知识库（如有） |
+
+##### 📊 数据来源路径
+
+**OpenROAD数据源（16个ISPD 2015设计）**：
+
+| 类型 | 路径 | 内容 |
+|------|------|------|
+| **结果目录** | `~/chipmas/results/clean_baseline/` | EXP-002完整结果 |
+| **原始设计** | `~/chipmas/data/datasets/ispd_2015_contest_benchmark/` | ISPD 2015原始文件 |
+| **实验记录** | `EXPERIMENTS.md` | EXP-002详细记录 |
+| **汇总报告** | `results/clean_baseline/summary.json` | 统计汇总 |
+
+**各设计目录结构**（`results/clean_baseline/{design_name}/`）：
+```
+mgc_fft_1/
+├── result.json                    # 完整结果（HPWL、运行时间等）
+├── mgc_fft_1_clean.tcl           # OpenROAD TCL脚本
+├── mgc_fft_1_clean_layout.def    # 布局DEF文件
+└── logs/
+    └── openroad_YYYYMMDD_HHMMSS.log  # OpenROAD运行日志
+```
+
+**数据字段**（`result.json`）：
+- `design`: 设计名称
+- `status`: 运行状态 (success/error)
+- `component_count`: 组件数量
+- `net_count`: 网络数量
+- `global_placement_hpwl`: Global Placement HPWL
+- `legalized_hpwl`: Legalized HPWL（详细布局后）
+- `runtime_seconds`: 运行时间（秒）
+- `die_size_used`: {die_area, core_area}
+- `timestamp`: 时间戳
+
+**DreamPlace数据源（12个ISPD 2005设计）**：
+
+| 类型 | 路径 | 内容 |
+|------|------|------|
+| **结果目录** | `~/dreamplace_experiment/DREAMPlace/install/results/` | DreamPlace布局结果 |
+| **案例列表** | adaptec1/2/3/4, bigblue1/2/3/4, mgc_matrix_mult_2, mgc_superblue14/19, superblue16a | 12个ISPD 2005设计 |
+
+##### 📚 核心文档索引
+
+**知识库管理**：
+- **详细指南**: `docs/knowledge_base_management.md` - 完整管理文档（362行）
+  - 包含：位置、状态、更新历史、备份策略、数据结构、维护工具、原始数据来源
+- **更新脚本**: `scripts/update_kb_with_clean_baseline.py` - 从Clean Baseline更新
+- **构建脚本**: `scripts/build_kb.py` - 从实验结果构建
+- **查询脚本**: `scripts/query_kb.py` - 查询和修改知识库
+
+**项目文档**：
+- **项目README**: `README.md` - 本文档，包含知识库快速参考
+- **工作总结**: `WORK_SUMMARY_AND_PLAN.md` - 进展追踪和计划
+- **实验记录**: `EXPERIMENTS.md` - 所有实验详细记录
+- **完整计划**: `docs/chipmasrag.plan.md` - ChipMASRAG详细实现计划
+
+##### 🔄 多层次文档体系
+
+**快速查看** → `README.md`（本文档）
+- 知识库位置和状态
+- 数据来源路径
+- 核心文档索引
+
+**进展追踪** → `WORK_SUMMARY_AND_PLAN.md`
+- 已完成工作
+- 当前状态
+- 下一步计划
+- 知识库数据源详情
+
+**详细管理** → `docs/knowledge_base_management.md`
+- 完整管理指南
+- 备份策略
+- 数据结构
+- 维护工具
+- 原始数据来源详情
+
+**实验追踪** → `EXPERIMENTS.md`
+- EXP-002完整记录
+- 16个设计的HPWL和运行时间
+- 问题解决过程
+
+##### ⚙️ 常用操作命令
+
+**查询知识库**：
+```bash
+# 查看所有案例
+python3 scripts/query_kb.py --config configs/default.yaml
+
+# 查看指定案例详情
+python3 scripts/query_kb.py --query mgc_fft_1 --details --config configs/default.yaml
+```
+
+**备份知识库**：
+```bash
+cd ~/chipmas/data/knowledge_base
+cp kb_cases.json backups/kb_cases_$(date +%Y%m%d_%H%M%S).json
+```
+
+**更新知识库**：
+```bash
+# 从Clean Baseline结果更新
+python3 scripts/update_kb_with_clean_baseline.py
+
+# 从新实验结果构建
+python3 scripts/build_kb.py --config configs/default.yaml
+```
+
+**验证知识库**：
+```bash
+# 在服务器上检查知识库状态
+ssh keqin@172.30.31.98 'python3 << "PYEOF"
+import json
+from pathlib import Path
+kb_file = Path.home() / "chipmas/data/knowledge_base/kb_cases.json"
+kb = json.load(open(kb_file))
+print(f"总案例数: {kb.get(\"num_cases\")}")
+print(f"最后更新: {kb.get(\"last_updated\")}")
+print(f"EXP-002集成: {kb.get(\"exp_002_integrated\")}")
+PYEOF'
+```
+
 ### 知识库构建和扩展
 
 知识库用于存储历史分区经验，支持RAG检索。系统提供了多种方法构建和扩展知识库，包括从设计文件、实验结果、以及DREAMPlace布局结果中提取案例。
@@ -2236,6 +2482,114 @@ P1(0,5000)  P3(5000,5000)   ← P1-P2相邻（强连接！）
 
 详细技术说明请参考：`docs/physical_mapping_explanation.md`
 
+## K-SpecPart集成状态
+
+### 服务器环境（已完成 ✅）
+
+**服务器信息**:
+- 地址: `172.30.31.98`
+- 用户: `keqin`
+- 工作目录: `~/chipmas`
+
+**已安装组件**:
+
+| 组件 | 版本 | 路径 | 状态 |
+|------|------|------|------|
+| Julia | 1.12.1 | `/usr/local/bin/julia` | ✅ |
+| METIS | 5.1.0 | `/usr/bin/gpmetis` | ✅ |
+| hMETIS | 1.5 | `~/.local/bin/khmetis` | ✅ |
+| K-SpecPart | latest | `~/chipmas/external/HypergraphPartitioning/K_SpecPart/` | ✅ |
+
+**Julia依赖包** (20+):
+- Shuffle, LightGraphs, SimpleWeightedGraphs
+- DataStructures, SparseArrays, CRC32c
+- Laplacians, LinearMaps, IterativeSolvers
+- Combinatorics, Clustering, Metis
+- SimpleGraphs, SimpleTraits, Graphs
+- 等...
+
+### 验证测试
+
+**1. K-SpecPart加载**:
+```bash
+$ cd ~/chipmas/external/HypergraphPartitioning/K_SpecPart
+$ julia --project -e 'include("specpart.jl")'
+✓✓✓ K-SpecPart加载成功！✓✓✓
+```
+
+**2. DEF→HGR转换** (mgc_fft_1):
+```bash
+$ python3 scripts/convert_ispd2015_to_hgr.py \
+    --def-file data/ispd2015/mgc_fft_1/floorplan.def \
+    --output results/kspecpart/mgc_fft_1/mgc_fft_1.hgr
+✓ 32,281 组件 → 33,299 超边
+```
+
+### 运行K-SpecPart实验
+
+```bash
+# SSH到服务器
+ssh keqin@172.30.31.98
+
+# 运行单个设计
+cd ~/chipmas
+export PATH="$HOME/.local/bin:$PATH"
+python3 scripts/run_kspecpart_experiment.py \
+    --design mgc_fft_1 \
+    --partitions 4 \
+    --balance 0.05
+```
+
+**输出文件**:
+- HGR文件: `results/kspecpart/{design}/{design}.hgr`
+- 分区结果: `results/kspecpart/{design}/{design}.part.{K}`
+- 统计信息: `results/kspecpart/{design}/{design}_stats.json`
+- 日志: `results/kspecpart/{design}/{design}_kspecpart.log`
+
+### 关键修复（已完成）
+
+| 问题 | 解决方案 | 文件 |
+|------|----------|------|
+| GraphLaplacians不兼容Julia 1.12.1 | 改用`Laplacians`包 | `embedding.jl:1` |
+| degree_matrix函数不存在 | 使用`spdiagm(0 => vec(sum(adj, dims=2)))` | `embedding.jl:52` |
+| 缺失Julia包 | 批量安装20+依赖包 | - |
+| hMETIS下载失败 | 从本地上传并安装 | `~/.local/bin/khmetis` |
+| 硬编码路径错误 | 修改为实际目录路径 | `definitions.jl:175-181` |
+| CPLEX未在PATH | 手动安装到`/opt/ibm/ILOG/...` | - |
+| ILP partitioner编译 | 使用CMake指定CPLEX路径 | `ilp_partitioner/build/` |
+| Python找不到Julia | 自动搜索`~/.juliaup/bin/julia` | `run_kspecpart_experiment.py:76` |
+
+### 首次成功运行（2024-11-14）
+
+**测试设计**: mgc_fft_1
+```bash
+$ python3 scripts/run_kspecpart_experiment.py --design mgc_fft_1 --partitions 4 --balance 0.05
+✅ 分区完成！
+  - 分区 0: 7988 个组件 (24.7%)
+  - 分区 1: 9667 个组件 (29.9%)  
+  - 分区 2: 7296 个组件 (22.6%)
+  - 分区 3: 7330 个组件 (22.7%)
+  - 总组件: 32281
+  - Cutsize: 219
+```
+
+**已知限制及修复（2024-11-14 已全部解决）**:
+- ~~TritonPart refiner路径拼接问题~~ ✅ 已修复
+  - 文件：`run_triton_part_refiner.jl:17` 添加空格
+- ~~ILP partitioner CPLEX许可问题~~ ✅ 已修复  
+  - 文件：`optimal_attempt_partitioner.jl` 添加try-catch，失败时回退到hMETIS
+  - 修复脚本：`scripts/fix_ilp_error_handling.py`
+
+**GraphLaplacians为何不可用？**
+- [GraphLaplacians](https://juliapackages.com/p/graphlaplacians)最新版本(0.2.1)仅支持Julia ≤ 1.6
+- 该项目已不再维护，所有功能已迁移到GraphSignals.jl
+- 服务器使用Julia 1.12.1，版本不兼容
+- **解决方案**：使用标准`Laplacians`包 + 直接计算度数矩阵 (`vec(sum(adj, dims=2))`)
+
+详细状态: `KSPECPART_INTEGRATION_SUMMARY.md` | `KSPECPART_FINAL_STATUS.md`
+
+---
+
 ## 文档
 
 详细文档请参考：
@@ -2243,6 +2597,7 @@ P1(0,5000)  P3(5000,5000)   ← P1-P2相邻（强连接！）
 - 论文：`docs/ChipMASRAG_paper_cn.tex`
 - OpenROAD GUI 使用指南：见本 README 的 "OpenROAD GUI 使用指南" 章节
 - 物理位置优化详解：`docs/physical_mapping_explanation.md`
+- K-SpecPart安装完成报告：`KSPECPART_SERVER_READY.md`
 
 ## 引用
 

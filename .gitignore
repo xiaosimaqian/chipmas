@@ -61,6 +61,7 @@ Thumbs.db
 experiments.json
 EXPERIMENTS.md
 EXP-*.md
+tests/results/
 
 # Knowledge base
 knowledge_base.json

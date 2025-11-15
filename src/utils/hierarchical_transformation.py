@@ -31,6 +31,8 @@ class HierarchicalTransformation:
         self.partition_scheme = None  # {module_name: partition_id}
         self.modules = {}  # {module_name: module_info}
         self.nets = {}  # {net_name: net_info}
+        self.top_module_name = None  # 顶层模块名
+        self.top_module_ports = {}  # {port_name: {'direction': 'input'/'output', 'nets': [net_names]}}
         self.boundary_connections = {}  # 边界连接信息
         self.partition_netlists = {}  # 分区网表
         self.top_netlist = None  # 顶层网表
@@ -101,7 +103,10 @@ class HierarchicalTransformation:
         
         self.flat_netlist = content
         
-        # 解析模块实例化
+        # 1. 解析顶层模块定义
+        self._parse_top_module(content)
+        
+        # 2. 解析模块实例化
         # 匹配: module_type instance_name ( .port1(net1), .port2(net2), ... );
         instance_pattern = re.compile(
             r'(\w+)\s+(\w+)\s*\((.*?)\)\s*;',
@@ -137,12 +142,60 @@ class HierarchicalTransformation:
         
         print(f"✓ 解析完成: {len(self.modules)} 个模块, {len(self.nets)} 个net")
     
+    def _parse_top_module(self, content: str):
+        """解析顶层模块定义，提取端口信息"""
+        # 匹配顶层模块定义
+        # module module_name ( port1, port2, ... );
+        module_pattern = re.compile(
+            r'module\s+(\w+)\s*\((.*?)\);',
+            re.DOTALL
+        )
+        
+        match = module_pattern.search(content)
+        if not match:
+            return
+        
+        self.top_module_name = match.group(1)
+        ports_str = match.group(2)
+        
+        # 解析端口声明（input/output）
+        # 支持格式: input wire [3:0] a, 或 output wire cout
+        port_pattern = re.compile(
+            r'(input|output)\s+wire\s+(?:\[(\d+):(\d+)\]\s+)?(\w+)',
+            re.MULTILINE
+        )
+        
+        for port_match in port_pattern.finditer(content):
+            direction = port_match.group(1)
+            msb = port_match.group(2)
+            lsb = port_match.group(3)
+            port_name = port_match.group(4)
+            
+            # 解析向量端口 (如 a[3:0])
+            if msb and lsb:
+                msb_val, lsb_val = int(msb), int(lsb)
+                # 生成每个bit的net名
+                for i in range(lsb_val, msb_val + 1):
+                    net_name = f"{port_name}[{i}]"
+                    self.top_module_ports[net_name] = {
+                        'direction': direction,
+                        'port_base': port_name,
+                        'bit': i
+                    }
+            else:
+                # 标量端口
+                self.top_module_ports[port_name] = {
+                    'direction': direction,
+                    'port_base': port_name,
+                    'bit': None
+                }
+    
     def _parse_connections(self, connections_str: str) -> Dict[str, str]:
         """解析模块连接字符串"""
         connections = {}
         
-        # 匹配 .port(net) 格式
-        conn_pattern = re.compile(r'\.(\w+)\s*\(\s*(\w+)\s*\)')
+        # 匹配 .port(net) 格式，支持向量索引
+        conn_pattern = re.compile(r'\.(\w+)\s*\(\s*([\w\[\]]+)\s*\)')
         
         for match in conn_pattern.finditer(connections_str):
             port = match.group(1)
