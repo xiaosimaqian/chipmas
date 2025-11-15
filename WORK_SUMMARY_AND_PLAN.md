@@ -167,6 +167,38 @@
 
 ## 📋 下一步工作计划（按优先级）
 
+### ⚠️ 阶段0关键发现：第一阶段实验未完成
+
+**当前状态**：K-SpecPart只完成了逻辑分区（Cutsize=219），**后续物理实现全部缺失**
+
+需要完成的Partition-based OpenROAD Flow：
+```
+当前: DEF → HGR → K-SpecPart → partition.part.4 ✅
+                                       ↓
+缺失:                                  ❌ 全部未实现
+  1. DEF分区提取 (从.part.4 → 4个partition.def)
+  2. 物理位置优化 (连接性驱动)
+  3. 各分区OpenROAD运行 (并行)
+  4. Macro LEF生成
+  5. 顶层DEF生成 (boundary nets only)
+  6. 顶层OpenROAD运行
+  7. 边界代价计算
+```
+
+**缺失的关键指标**：
+- ❌ Internal HPWL (4个分区总和)
+- ❌ Boundary HPWL (顶层布线)
+- ❌ Boundary Cost = BC%
+- ❌ Total HPWL (K-SpecPart方法)
+- ❌ HPWL改善率 vs Clean Baseline (11,425,351.4 um)
+
+**重要说明**：
+- ❌ **不需要Formal验证**（基于DEF的component-level分区，不改变逻辑连接）
+- ❌ **hierarchical_transformation.py不适用**（需要Verilog网表，ISPD 2015无门级网表）
+- ✅ **新方案**：实现`def_partition_extractor.py`，直接从DEF操作
+
+---
+
 ### 阶段0：ISPD 2015 Baseline数据收集（2.5-3.5周）⭐⭐⭐
 
 **优先级：P0（最高 - 实验基础）**
@@ -612,6 +644,142 @@
 - **修复**: `run_kspecpart_experiment.py`自动搜索多个可能路径
 
 **总实际用时**：约10小时（含深度debug和CPLEX分析）
+
+#### 🎯 阶段3后续：Partition-based Flow实现（5-6天）🔥🔥🔥
+
+**这是论文核心创新！必须立即实现！**
+
+##### Phase 1：基础设施实现（3-4天）
+
+**任务3.6：DEF分区提取器**（1天）⭐ 最高优先级
+- [ ] 创建 `src/utils/def_partition_extractor.py`
+- [ ] 实现 `extract_partition_def()` - 从DEF + .part.4 → partition DEFs
+- [ ] 实现 `identify_boundary_nets()` - 识别跨分区nets
+- [ ] 单元测试：mgc_fft_1 (4个分区)
+
+**功能接口**：
+```python
+def extract_partition_def(
+    original_def: Path,
+    partition_scheme: Dict[int, List[str]],
+    output_dir: Path,
+    die_config: Dict
+) -> Dict[int, Path]:
+    """从原始DEF提取各分区的独立DEF文件"""
+    
+def identify_boundary_nets(
+    original_def: Path,
+    partition_scheme: Dict[int, List[str]]
+) -> Dict:
+    """识别跨分区的边界网络"""
+```
+
+**任务3.7：顶层DEF生成器**（1天）
+- [ ] 创建 `src/utils/top_def_generator.py`
+- [ ] 实现 `generate_top_def()` - Macro LEF + boundary nets → top.def
+- [ ] 单元测试
+
+**功能接口**：
+```python
+def generate_top_def(
+    partition_lef_files: Dict[int, Path],
+    boundary_nets: Dict,
+    physical_regions: Dict[int, Tuple],
+    output_def: Path,
+    die_config: Dict
+) -> Path:
+    """生成顶层DEF（只包含boundary nets和partition macros）"""
+```
+
+**任务3.8：完整流程脚本**（1-2天）
+- [ ] 创建 `scripts/run_partition_based_flow.py`
+- [ ] 集成所有模块（10步完整流程）
+- [ ] 并行OpenROAD执行（ThreadPoolExecutor）
+- [ ] 结果汇总和可视化
+
+**完整流程**：
+```python
+def run_partition_based_flow(design_name, partition_file, num_partitions):
+    # 1. 解析分区结果
+    # 2. 识别边界网络
+    # 3. 物理位置优化 (已有: physical_mapping.py)
+    # 4. 提取各分区DEF (新: def_partition_extractor.py)
+    # 5. 并行运行各分区OpenROAD
+    # 6. 生成Macro LEF (已有: macro_lef_generator.py)
+    # 7. 生成顶层DEF (新: top_def_generator.py)
+    # 8. 顶层OpenROAD运行
+    # 9. 计算边界代价
+    # 10. 汇总结果
+```
+
+##### Phase 2：mgc_fft_1完整实验（1天）
+
+**运行命令**：
+```bash
+python3 scripts/run_partition_based_flow.py \
+  --design mgc_fft_1 \
+  --partition-file results/kspecpart/mgc_fft_1/mgc_fft_1.hgr.processed.specpart.part.4 \
+  --num-partitions 4 \
+  --output results/kspecpart/mgc_fft_1/partition_based_flow/
+```
+
+**预期输出指标**：
+- Internal HPWL (4个分区总和)
+- Boundary HPWL
+- **Boundary Cost = BC%**
+- Total HPWL
+- **HPWL改善率 vs Baseline**
+- 运行时间分析
+
+##### Phase 3：知识库集成（0.5天）
+
+**数据结构**：
+```python
+kb_entry = {
+    "design_name": "mgc_fft_1",
+    "method": "K-SpecPart",
+    "partitioning": {
+        "cutsize": 219,
+        "partition_balance": 0.1979
+    },
+    "physical_layout": {
+        "partition_hpwls": [...],  # 待获取
+        "boundary_cost": X%,       # 待计算
+        "total_hpwl": Y            # 待测量
+    },
+    "comparison": {
+        "baseline_hpwl": 11425351.4,
+        "improvement": Z%          # 待计算
+    }
+}
+```
+
+**实现脚本**：
+- [ ] 创建 `scripts/update_kb_with_partition_results.py`
+- [ ] 更新知识库数据格式
+- [ ] 验证数据一致性
+
+##### 时间估算与本周目标
+
+| 任务 | 预计时间 | 优先级 |
+|------|---------|--------|
+| DEF分区提取器 | 1天 | P0 🔥 |
+| 顶层DEF生成器 | 1天 | P0 🔥 |
+| 完整流程脚本 | 1-2天 | P0 🔥 |
+| mgc_fft_1实验 | 1天 | P0 🔥 |
+| 知识库集成 | 0.5天 | P1 |
+| **总计** | **5-6天** | |
+
+**本周目标（Week of 2025-11-15）**：
+- 📅 周一-周三：实现基础设施
+- 📅 周四：完成mgc_fft_1实验
+- 📅 周五：知识库集成 + 文档
+
+**完成标志**：
+- ✅ mgc_fft_1的K-SpecPart完整流程运行成功
+- ✅ 获得完整对比指标（BC%, HPWL改善率）
+- ✅ 知识库包含分区数据
+- ✅ 形成可复用实验流程
 
 ---
 

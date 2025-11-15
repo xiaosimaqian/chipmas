@@ -65,3 +65,15 @@ tests/results/
 
 # Knowledge base
 knowledge_base.json
+
+# 临时状态文件
+KSPECPART_*.md
+K_SPECPART_*.md
+TEST_STATUS.md
+NEXT_STEPS_*.md
+
+# K-SpecPart相关（不提交）
+external/HypergraphPartitioning/
+hmetis-1.5-*/
+*.tar.gz
+
