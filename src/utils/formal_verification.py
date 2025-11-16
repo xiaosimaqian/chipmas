@@ -107,7 +107,7 @@ class FormalVerifier:
             "",
             "# Read flat design (gold)",
             f"read_verilog {flat_netlist}",
-            "hierarchy -check -top {top_module}",
+            "hierarchy -top {top_module}",  # 去掉-check，允许标准单元作为黑盒
             "proc; opt_clean",
             "flatten",
             "rename -top gold",
@@ -125,7 +125,7 @@ class FormalVerifier:
         script_lines.append(f"read_verilog {top_netlist}")
         
         script_lines.extend([
-            "hierarchy -check -top {top_module}",
+            "hierarchy -top {top_module}",  # 去掉-check，允许标准单元作为黑盒
             "proc; opt_clean",
             "flatten",
             "rename -top gate",

@@ -1,0 +1,58 @@
+{
+  "design_name": "mgc_fft_1",
+  "steps": {
+    "partition_openroad": {
+      "2": {
+        "partition_id": 2,
+        "success": true,
+        "def_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_2/partition_2_layout.def",
+        "hpwl": 1734124.5,
+        "runtime": 343.2382502555847,
+        "log_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_2/openroad_2.log"
+      },
+      "1": {
+        "partition_id": 1,
+        "success": true,
+        "def_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_1/partition_1_layout.def",
+        "hpwl": 1596688.3,
+        "runtime": 343.6478819847107,
+        "log_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_1/openroad_1.log"
+      },
+      "3": {
+        "partition_id": 3,
+        "success": true,
+        "def_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_3/partition_3_layout.def",
+        "hpwl": 1913437.3,
+        "runtime": 346.8560609817505,
+        "log_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_3/openroad_3.log"
+      },
+      "0": {
+        "partition_id": 0,
+        "success": true,
+        "def_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_0/partition_0_layout.def",
+        "hpwl": 1540203.6,
+        "runtime": 348.66757583618164,
+        "log_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/partition_0/openroad_0.log"
+      }
+    },
+    "macro_lef_generation": {},
+    "top_openroad": {
+      "success": true,
+      "def_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/top/top_layout.def",
+      "hpwl": 4.4,
+      "runtime": 17.069276809692383,
+      "log_file": "tests/results/partition_flow/mgc_fft_1_step1_8/openroad/top/openroad_top.log"
+    },
+    "boundary_cost": {
+      "internal_hpwl_total": 6784453.699999999,
+      "boundary_hpwl": 4.4,
+      "boundary_cost_percent": 6.485415325334154e-05,
+      "partition_hpwls": {
+        "2": 1734124.5,
+        "1": 1596688.3,
+        "3": 1913437.3,
+        "0": 1540203.6
+      }
+    }
+  }
+}
